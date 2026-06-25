@@ -1,0 +1,6 @@
+pymongo
+langchain
+langchain-google-genai
+langchain-community
+numpy
+scipy
