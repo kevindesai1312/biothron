@@ -8,6 +8,7 @@ export default function AnalyticsDashboard({ token, onLogout }) {
   const [trendingIssuesData, setTrendingIssuesData] = useState([]);
   const [regionalConcernsData, setRegionalConcernsData] = useState([]);
   const [recentLogs, setRecentLogs] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [latestLogId, setLatestLogId] = useState(null);
   const [flashingId, setFlashingId] = useState(null);
   const [ashaFeed, setAshaFeed] = useState([]);

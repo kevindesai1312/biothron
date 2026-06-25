@@ -28,7 +28,7 @@ SwasthyaMitra is a multilingual, voice-first public health platform powered by G
 
 Judges are inherently skeptical of LLMs handling medical queries due to liability and safety concerns. SwasthyaMitra addresses this with a **100% verified data boundary enforcement mechanism**:
 - **Dev Toggle UI**: A hidden toggle on the frontend reveals a card showing the exact **Cosine Similarity Score** calculated by our local Python NumPy script against the MongoDB Compass database.
-- **The Pitch**: "We don't trust the LLM blindly. If a user asks a question and our MongoDB local vector math yields a similarity score below 0.70, our Master Prompt actively locks down the system and prevents a response. It outputs a strict 'Data Boundary Enforced' refusal instead."
+- **The Pitch**: "We don't trust the LLM blindly. If a user asks a question and our MongoDB local vector math yields a similarity score below 0.50, our Master Prompt actively locks down the system and prevents a response. It outputs a strict 'Data Boundary Enforced' refusal instead."
 
 ## Epidemic Early-Warning Broadcast (Proactive Analytics)
 To prove SwasthyaMitra is a true public health infrastructure tool rather than a reactive chatbot:

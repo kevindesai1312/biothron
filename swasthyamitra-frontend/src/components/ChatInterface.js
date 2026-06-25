@@ -323,10 +323,10 @@ export default function ChatInterface() {
 
               {/* Dev Mode Metric Card (Hallucination Defense) */}
               {devMode && msg.sender === 'bot' && msg.confidence_score !== undefined && (
-                <div className={`mt-3 p-2 rounded text-xs font-mono font-bold border flex flex-col gap-1 ${msg.confidence_score >= 0.70 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                <div className={`mt-3 p-2 rounded text-xs font-mono font-bold border flex flex-col gap-1 ${msg.confidence_score >= 0.50 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                   <span>[Hallucination Defense]</span>
                   <span>Cosine Similarity Score: {msg.confidence_score.toFixed(4)}</span>
-                  {msg.confidence_score < 0.70 && <span className="text-red-600">🚨 SYSTEM LOCKED: Boundary Enforced</span>}
+                  {msg.confidence_score < 0.50 && <span className="text-red-600">🚨 SYSTEM LOCKED: Boundary Enforced</span>}
                 </div>
               )}
             </div>
