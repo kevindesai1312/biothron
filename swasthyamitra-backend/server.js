@@ -383,8 +383,6 @@ async function getAIandRAGResponse(query) {
     }
 }
 
-}
-
 // --- PROACTIVE BROADCAST ENDPOINTS ---
 app.post('/api/admin/broadcast', authenticateToken, (req, res) => {
     const { message, region } = req.body;
