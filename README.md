@@ -1,5 +1,7 @@
 # SwasthyaMitra Full Stack Setup
 
+**[GitHub Repository](https://github.com/kevindesai1312/biothron)**
+
 SwasthyaMitra is a multilingual, voice-first public health platform powered by Gemini AI, MongoDB Vector Search, and OpenStreetMap.
 
 ## Architecture
@@ -24,18 +26,34 @@ SwasthyaMitra is a multilingual, voice-first public health platform powered by G
 
 ## How to Run the Project
 
-You will need two separate terminal windows.
+### Prerequisites
+- **Node.js** (v16+)
+- **Python** 3.8+
+- **MongoDB** (running locally on `mongodb://localhost:27017` or Atlas)
 
-### Terminal 1: Backend Server
-1. `cd swasthyamitra-backend`
-2. Ensure you have your `.env` configured:
+### Initial Setup (Python Engine & Vector DB)
+1. Open a terminal in the root folder.
+2. Install the required Python dependencies:
+   ```bash
+   pip install -r requirements.txt
    ```
+3. Create a `.env` file in the `swasthyamitra-backend` folder and add your keys:
+   ```env
    GEMINI_API_KEY=your_gemini_key
    PORT=5000
    MONGO_URI=mongodb://localhost:27017
    ```
-3. Run `npm install`
-4. Run `npm run dev` (starts the server with nodemon)
+4. Run the data ingestion script to populate MongoDB with the medical knowledge base:
+   ```bash
+   python ingest.py
+   ```
+
+You will now need two separate terminal windows for the frontend and backend.
+
+### Terminal 1: Backend Server
+1. `cd swasthyamitra-backend`
+2. Run `npm install`
+3. Run `npm run dev` (starts the server with nodemon)
 
 ### Terminal 2: Frontend Server
 1. `cd swasthyamitra-frontend`
