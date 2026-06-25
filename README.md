@@ -43,6 +43,14 @@ An exit strategy demonstrating that the AI acts as the first line of triage, not
 - **Live Dispatch Feed:** The full conversation transcript is securely forwarded to the **"ASHA Worker Mobile Feed"** widget visible on the Admin Dashboard for immediate human intervention.
 - **The Pitch**: "We know AI has boundaries in healthcare. SwasthyaMitra acts as the first line of triage. When symptoms exceed general awareness thresholds, the system flags the interaction and routes the full localized transcript to the village's assigned ASHA worker, ensuring human intervention exactly where it is needed most."
 
+## Zero-Data Ultra-Lightweight Client Target PWA
+In deep rural pockets of digital India, downloading a heavy application or parsing media-rich websites over patchy 2G/3G connections is highly unrealistic.
+- **Low Data Mode Toggle:** The patient interface features a single-tap "Low Data Mode" switch.
+- **Aggressive UI Stripping:** When activated, the React client instantly strips away heavy Tailwind styles, gradients, glassmorphism filters, shadow DOM elements, and non-essential UI animations. It compresses the interface into raw, clean HTML/CSS optimized to transmit tiny byte payloads.
+- **Audio Bypass Engine:** In Low Data Mode, the backend is instructed to completely bypass the execution of the Google TTS engine, preventing the generation and transfer of multi-megabyte `.mp3` files, ensuring the response payload is just a few kilobytes of raw JSON text.
+- **The Pitch**: "We engineered SwasthyaMitra to thrive in low-bandwidth realities. With a single tap, the interface strips down to an ultra-lightweight text framework that runs seamlessly on unstable 2G networks, ensuring connectivity when standard applications fail completely."
+
+
 ## How to Run the Project
 
 ### Prerequisites

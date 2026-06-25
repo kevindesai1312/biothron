@@ -11,6 +11,7 @@ export default function ChatInterface() {
   const [abhaId, setAbhaId] = useState("");
   const [abhaLinked, setAbhaLinked] = useState(false);
   const [devMode, setDevMode] = useState(false);
+  const [lowDataMode, setLowDataMode] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
   
   const mediaRecorderRef = useRef(null);
@@ -57,7 +58,8 @@ export default function ChatInterface() {
       const res = await axios.post('http://localhost:5000/api/chat-text', {
         userQuery: text,
         locationText,
-        abhaLinked
+        abhaLinked,
+        lowDataMode
       });
       setMessages(prev => [...prev, { 
           sender: 'bot', 
@@ -104,6 +106,9 @@ export default function ChatInterface() {
         }
         if (abhaLinked) {
             formData.append('abhaLinked', 'true');
+        }
+        if (lowDataMode) {
+            formData.append('lowDataMode', 'true');
         }
 
         try {
@@ -167,9 +172,9 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-2xl bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 mx-auto overflow-hidden">
+    <div className={`flex flex-col h-[600px] w-full max-w-2xl mx-auto overflow-hidden ${lowDataMode ? 'bg-white border-4 border-black' : 'bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50'}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-5 flex flex-col shadow-md z-10 space-y-3">
+      <div className={`${lowDataMode ? 'bg-black text-white p-2 border-b-4 border-black' : 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-5 shadow-md'} flex flex-col z-10 space-y-3`}>
         <div className="flex justify-between items-center">
           <div>
             <h2 className="font-bold text-lg">SwasthyaMitra AI</h2>
@@ -185,7 +190,7 @@ export default function ChatInterface() {
           </div>
         </div>
         {/* ABHA Link & Auto Play Controls */}
-        <div className="flex justify-between items-center mt-2 pt-2 border-t border-emerald-500/30">
+        <div className={`flex justify-between items-center mt-2 pt-2 ${lowDataMode ? 'border-t border-gray-600' : 'border-t border-emerald-500/30'}`}>
           
           {/* ABHA Mock UI */}
           <div className="flex items-center gap-2">
@@ -213,7 +218,6 @@ export default function ChatInterface() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Dev Mode Toggle */}
             <label className="flex items-center space-x-2 cursor-pointer text-xs font-medium" title="Show Hallucination Defense Metric">
               <span className="opacity-90">Dev Mode</span>
               <div 
@@ -221,6 +225,17 @@ export default function ChatInterface() {
                 onClick={() => setDevMode(!devMode)}
               >
                 <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${devMode ? 'translate-x-4' : ''}`}></div>
+              </div>
+            </label>
+
+            {/* Low Data Mode Toggle */}
+            <label className="flex items-center space-x-2 cursor-pointer text-xs font-medium" title="Strip UI for 2G Networks">
+              <span className="opacity-90">Low Data Mode</span>
+              <div 
+                className={`relative w-8 h-4 rounded-full transition-colors ${lowDataMode ? 'bg-blue-500' : 'bg-gray-400'}`}
+                onClick={() => setLowDataMode(!lowDataMode)}
+              >
+                <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${lowDataMode ? 'translate-x-4' : ''}`}></div>
               </div>
             </label>
 
@@ -239,22 +254,22 @@ export default function ChatInterface() {
 
       {/* Proactive Broadcast Alert Banner */}
       {activeAlert && (
-        <div className="bg-orange-500 text-white px-4 py-2 text-center text-sm shadow-md flex justify-center items-center gap-2 animate-pulse font-bold tracking-wide">
-          <ShieldAlert className="w-5 h-5" />
+        <div className={`${lowDataMode ? 'bg-black text-white font-bold p-2 text-center uppercase border-b-2 border-white' : 'bg-orange-500 text-white px-4 py-2 text-center text-sm shadow-md flex justify-center items-center gap-2 animate-pulse font-bold tracking-wide'}`}>
+          {!lowDataMode && <ShieldAlert className="w-5 h-5" />}
           ⚠️ Alert from local health authorities: {activeAlert.message}
         </div>
       )}
 
       {/* Chat Area */}
-      <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-gray-50/50">
+      <div className={`flex-1 p-5 overflow-y-auto space-y-4 ${lowDataMode ? 'bg-white' : 'bg-gray-50/50'}`}>
         {messages.map((msg, idx) => (
-          <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} animate-fade-in-up`}>
+          <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} ${lowDataMode ? '' : 'animate-fade-in-up'}`}>
             
             {/* Emergency Banner */}
             {msg.is_emergency && (
-              <div className="mb-2 max-w-[90%] bg-red-600 text-white p-3 rounded-lg flex items-start gap-2 shadow-lg animate-pulse">
-                <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <p className="font-bold text-sm tracking-wide">
+              <div className={`mb-2 max-w-[90%] ${lowDataMode ? 'bg-black text-white font-bold p-2' : 'bg-red-600 text-white p-3 rounded-lg shadow-lg animate-pulse'} flex items-start gap-2`}>
+                {!lowDataMode && <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />}
+                <p className={`${lowDataMode ? 'text-xs' : 'font-bold text-sm tracking-wide'}`}>
                   🚨 Critical Situation Detected: Please visit the nearest primary health center immediately.
                 </p>
               </div>
@@ -262,22 +277,22 @@ export default function ChatInterface() {
 
             {/* ASHA Hand-off Banner */}
             {msg.is_asha_handoff && msg.asha_profile && (
-              <div className="mb-2 max-w-[90%] bg-blue-600 text-white p-3 rounded-lg flex flex-col items-start gap-2 shadow-lg animate-pulse">
+              <div className={`mb-2 max-w-[90%] flex flex-col items-start gap-2 ${lowDataMode ? 'bg-white text-black border-2 border-black p-2 font-bold' : 'bg-blue-600 text-white p-3 rounded-lg shadow-lg animate-pulse'}`}>
                 <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                  <p className="font-bold text-sm tracking-wide">
+                  {!lowDataMode && <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />}
+                  <p className={`${lowDataMode ? 'text-xs' : 'font-bold text-sm tracking-wide'}`}>
                     Connecting with your local ASHA worker...
                   </p>
                 </div>
-                <div className="bg-blue-700 w-full p-2 rounded text-xs border border-blue-500">
+                <div className={`${lowDataMode ? 'border border-black p-1 text-xs' : 'bg-blue-700 w-full p-2 rounded text-xs border border-blue-500'}`}>
                   <p><strong>{msg.asha_profile.role}:</strong> {msg.asha_profile.name}</p>
                   <p><strong>Assigned Code:</strong> {msg.asha_profile.code}</p>
-                  <p className="mt-1 opacity-90 text-[11px]">Your conversation transcript has been securely forwarded for immediate human intervention.</p>
+                  {!lowDataMode && <p className="mt-1 opacity-90 text-[11px]">Your conversation transcript has been securely forwarded for immediate human intervention.</p>}
                 </div>
               </div>
             )}
 
-            <div className={`p-4 rounded-2xl max-w-[85%] shadow-sm ${msg.sender === 'user' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-br-none' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-none'}`}>
+            <div className={`${lowDataMode ? 'p-2 max-w-[90%] border-2 border-black text-black' : 'p-4 rounded-2xl max-w-[85%] shadow-sm'} ${!lowDataMode ? (msg.sender === 'user' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-br-none' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-none') : ''}`}>
               <p className="text-[15px] leading-relaxed whitespace-pre-line">{msg.text}</p>
               
               {/* Audio Controls */}
@@ -320,23 +335,30 @@ export default function ChatInterface() {
       </div>
 
       {/* Input Action Panel */}
-      <div className="p-4 bg-white/80 backdrop-blur-md border-t flex items-center gap-3">
+      <div className={`${lowDataMode ? 'p-2 bg-white border-t-4 border-black' : 'p-4 bg-white/80 backdrop-blur-md border-t'} flex items-center gap-3`}>
         <button 
           onClick={isRecording ? stopRecording : startRecording} 
-          className={`p-3.5 rounded-full shadow-md transition-colors ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-red-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm'}`}
+          className={lowDataMode 
+            ? `p-2 font-bold border-2 border-black ${isRecording ? 'bg-black text-white' : 'bg-white text-black'}` 
+            : `p-3.5 rounded-full shadow-md transition-colors ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-red-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm'}`}
         >
-          <Mic className="w-5 h-5" />
+          {lowDataMode ? (isRecording ? 'STOP' : 'MIC') : <Mic className="w-5 h-5" />}
         </button>
         <input
           type="text"
-          placeholder="Ask a health question or use the microphone..."
-          className="flex-1 bg-gray-50 border border-gray-200 p-3.5 rounded-full outline-none text-[15px] focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+          placeholder="Ask a health question..."
+          className={`flex-1 outline-none transition-all ${lowDataMode ? 'border-2 border-black p-2 bg-white text-black placeholder:text-gray-500' : 'bg-gray-50 border border-gray-200 p-3.5 rounded-full text-[15px] focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'}`}
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage(inputText)}
         />
-        <button onClick={() => sendMessage(inputText)} className="p-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all">
-          <Send className="w-5 h-5" />
+        <button 
+          onClick={() => sendMessage(inputText)} 
+          className={lowDataMode
+            ? `p-2 border-2 border-black bg-black text-white font-bold`
+            : `p-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all`}
+        >
+          {lowDataMode ? 'SEND' : <Send className="w-5 h-5" />}
         </button>
       </div>
     </div>

@@ -199,23 +199,28 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
             logTelemetry(userQueryText, req.body.location || "Unknown");
         }
 
-        // 3. Text-to-Voice: Convert the response back into speech for accessibility
-        console.log("Generating audio response via Google TTS...");
-        const base64AudioArray = await googleTTS.getAllAudioBase64(finalResponse, {
-            lang: 'hi', // Using Hindi for regional accessibility
-            slow: false,
-            host: 'https://translate.google.com',
-            splitPunct: ',.?'
-        });
+        let outputFilename = null;
+        if (req.body.lowDataMode !== 'true') {
+            // 3. Text-to-Voice: Convert the response back into speech for accessibility
+            console.log("Generating audio response via Google TTS...");
+            const base64AudioArray = await googleTTS.getAllAudioBase64(finalResponse, {
+                lang: 'hi', // Using Hindi for regional accessibility
+                slow: false,
+                host: 'https://translate.google.com',
+                splitPunct: ',.?'
+            });
 
-        // Save TTS file locally
-        const outputFilename = `response_${Date.now()}.mp3`;
-        const outputAudioPath = path.join(uploadDir, outputFilename);
-        
-        // Concatenate all audio buffers
-        const buffers = base64AudioArray.map(obj => Buffer.from(obj.base64, 'base64'));
-        const finalBuffer = Buffer.concat(buffers);
-        await fs.promises.writeFile(outputAudioPath, finalBuffer);
+            // Save TTS file locally
+            outputFilename = `response_${Date.now()}.mp3`;
+            const outputAudioPath = path.join(uploadDir, outputFilename);
+            
+            // Concatenate all audio buffers
+            const buffers = base64AudioArray.map(obj => Buffer.from(obj.base64, 'base64'));
+            const finalBuffer = Buffer.concat(buffers);
+            await fs.promises.writeFile(outputAudioPath, finalBuffer);
+        } else {
+            console.log("Low Data Mode Enabled: Bypassing Google TTS Generation to save bandwidth.");
+        }
 
         // Clean up the incoming audio chunk file
         fs.unlinkSync(audioPath);
@@ -229,7 +234,7 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
             is_emergency: isEmergency,
             is_asha_handoff: isAshaHandoff,
             asha_profile: ashaProfile,
-            audio_url: `http://localhost:${process.env.PORT || 5000}/uploads/${outputFilename}`
+            audio_url: outputFilename ? `http://localhost:${process.env.PORT || 5000}/uploads/${outputFilename}` : null
         });
 
     } catch (error) {
