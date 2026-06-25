@@ -77,6 +77,25 @@ function checkEmergency(query) {
     return null;
 }
 
+// --- PROACTIVE ANALYTICS & ASHA HAND-OFF STATE ---
+let activeBroadcast = null;
+const ashaFeed = [];
+const ashaHandoffKeywords = /5 days|persistent high fever|prolonged|not going away|several days/i;
+
+function checkAshaHandoff(query) {
+    if (ashaHandoffKeywords.test(query)) {
+        return {
+            is_asha_handoff: true,
+            asha_profile: {
+                name: "Sunita Devi",
+                code: "#3942",
+                role: "Local ASHA Worker"
+            }
+        };
+    }
+    return null;
+}
+
 // Telemetry Logic
 const diseaseKeywords = ['Malaria', 'Dengue', 'Vaccination', 'TB', 'Fever', 'Diabetes', 'Cholera', 'Typhoid'];
 async function logTelemetry(query, location) {
@@ -135,12 +154,26 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
         console.log(`User Said (Transcribed): ${userQueryText}`);
 
         const emergency = checkEmergency(userQueryText);
-        let finalResponse, sources = [], isEmergency = false, confidenceScore = 0;
+        const ashaHandoff = checkAshaHandoff(userQueryText);
+        let finalResponse, sources = [], isEmergency = false, isAshaHandoff = false, ashaProfile = null, confidenceScore = 0;
 
         if (emergency) {
             console.log("Emergency Triggered!");
             finalResponse = emergency.ai_response;
             isEmergency = true;
+        } else if (ashaHandoff) {
+            console.log("ASHA Hand-off Triggered!");
+            finalResponse = "Connecting with your local ASHA worker... Please wait while we securely transmit your symptom details.";
+            isAshaHandoff = true;
+            ashaProfile = ashaHandoff.asha_profile;
+            
+            ashaFeed.unshift({
+                timestamp: new Date(),
+                query: userQueryText,
+                location: req.body.location || "Unknown",
+                profile: ashaProfile
+            });
+            if (ashaFeed.length > 50) ashaFeed.pop();
         } else {
             // Check if user location was provided to enrich the query with OSM data
             if (req.body.location) {
@@ -194,6 +227,8 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
             sources: sources,
             confidence_score: confidenceScore,
             is_emergency: isEmergency,
+            is_asha_handoff: isAshaHandoff,
+            asha_profile: ashaProfile,
             audio_url: `http://localhost:${process.env.PORT || 5000}/uploads/${outputFilename}`
         });
 
@@ -216,11 +251,31 @@ app.post('/api/chat-text', async (req, res) => {
         }
 
         const emergency = checkEmergency(userQuery);
+        const ashaHandoff = checkAshaHandoff(userQuery);
         if (emergency) {
             return res.json({
                 user_query: userQuery,
                 ai_response: emergency.ai_response,
                 is_emergency: true,
+                is_asha_handoff: false,
+                sources: []
+            });
+        } else if (ashaHandoff) {
+            console.log("ASHA Hand-off Triggered!");
+            ashaFeed.unshift({
+                timestamp: new Date(),
+                query: userQuery,
+                location: locationText || "Unknown",
+                profile: ashaHandoff.asha_profile
+            });
+            if (ashaFeed.length > 50) ashaFeed.pop();
+
+            return res.json({
+                user_query: userQuery,
+                ai_response: "Connecting with your local ASHA worker... Please wait while we securely transmit your symptom details.",
+                is_emergency: false,
+                is_asha_handoff: true,
+                asha_profile: ashaHandoff.asha_profile,
                 sources: []
             });
         }
@@ -248,7 +303,8 @@ app.post('/api/chat-text', async (req, res) => {
             ai_response: resultObj.ai_response,
             sources: resultObj.sources || [],
             confidence_score: resultObj.confidence_score || 0,
-            is_emergency: false
+            is_emergency: false,
+            is_asha_handoff: false
         });
 
     } catch (error) {
@@ -326,6 +382,24 @@ async function getAIandRAGResponse(query) {
         };
     }
 }
+
+}
+
+// --- PROACTIVE BROADCAST ENDPOINTS ---
+app.post('/api/admin/broadcast', authenticateToken, (req, res) => {
+    const { message, region } = req.body;
+    activeBroadcast = { message, region, timestamp: new Date() };
+    console.log(`[BROADCAST] Alert sent to ${region}: ${message}`);
+    res.json({ success: true, broadcast: activeBroadcast });
+});
+
+app.get('/api/alerts/active', (req, res) => {
+    res.json({ activeBroadcast });
+});
+
+app.get('/api/admin/asha-feed', authenticateToken, (req, res) => {
+    res.json({ feed: ashaFeed });
+});
 
 // --- ADMIN LOGIN ENDPOINT ---
 app.post('/api/admin/login', async (req, res) => {

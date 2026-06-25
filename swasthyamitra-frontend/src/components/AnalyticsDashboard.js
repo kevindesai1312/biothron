@@ -10,6 +10,7 @@ export default function AnalyticsDashboard({ token, onLogout }) {
   const [recentLogs, setRecentLogs] = useState([]);
   const [latestLogId, setLatestLogId] = useState(null);
   const [flashingId, setFlashingId] = useState(null);
+  const [ashaFeed, setAshaFeed] = useState([]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -22,6 +23,9 @@ export default function AnalyticsDashboard({ token, onLogout }) {
         const recentRes = await axios.get('http://localhost:5000/api/analytics/recent', config);
         const newLogs = recentRes.data.recentLogs;
         setRecentLogs(newLogs);
+
+        const ashaRes = await axios.get('http://localhost:5000/api/admin/asha-feed', config);
+        setAshaFeed(ashaRes.data.feed);
         
         if (newLogs.length > 0) {
           setLatestLogId((prev) => {
@@ -46,11 +50,33 @@ export default function AnalyticsDashboard({ token, onLogout }) {
     return () => clearInterval(interval);
   }, [token, onLogout]);
 
+  const triggerBroadcast = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await axios.post('http://localhost:5000/api/admin/broadcast', {
+        message: "Dengue spike detected in your area. Please eliminate standing water immediately.",
+        region: "Surat"
+      }, config);
+      alert("Public Health Alert Broadcasted to Surat!");
+    } catch(err) {
+      console.error(err);
+      alert("Failed to broadcast alert.");
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-50 rounded-xl border max-w-4xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-800">Healthcare Analytics Dashboard</h2>
-        <p className="text-sm text-gray-500">Real-time Public Health Concerns & Interaction Analytics</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Healthcare Analytics Dashboard</h2>
+          <p className="text-sm text-gray-500">Real-time Public Health Concerns & Interaction Analytics</p>
+        </div>
+        <button 
+          onClick={triggerBroadcast}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded shadow transition-colors flex items-center gap-2"
+        >
+          <span className="animate-pulse">⚠️</span> Trigger Public Health Alert (Surat)
+        </button>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -145,6 +171,50 @@ export default function AnalyticsDashboard({ token, onLogout }) {
           </table>
         </div>
       </div>
+
+      {/* ASHA Worker Hand-off Feed */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border mt-6 border-blue-200">
+        <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+          ASHA Worker Mobile Feed (Live Triage)
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-blue-600 bg-blue-50 uppercase border-b border-blue-200">
+              <tr>
+                <th className="px-4 py-3">Timestamp</th>
+                <th className="px-4 py-3">Location</th>
+                <th className="px-4 py-3">Patient Transcript (Triage Reason)</th>
+                <th className="px-4 py-3">Assigned ASHA</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ashaFeed.map((log, idx) => (
+                <tr key={idx} className="bg-white border-b hover:bg-gray-50">
+                  <td className="px-4 py-3 whitespace-nowrap text-gray-700">
+                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-700">
+                    {log.location || "Unknown"}
+                  </td>
+                  <td className="px-4 py-3 text-gray-700 italic">
+                    "{log.query}"
+                  </td>
+                  <td className="px-4 py-3 font-medium text-blue-700">
+                    {log.profile.name} ({log.profile.code})
+                  </td>
+                </tr>
+              ))}
+              {ashaFeed.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="px-4 py-4 text-center text-gray-500 italic">No triage hand-offs detected yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }

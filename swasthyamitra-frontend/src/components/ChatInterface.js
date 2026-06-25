@@ -11,6 +11,7 @@ export default function ChatInterface() {
   const [abhaId, setAbhaId] = useState("");
   const [abhaLinked, setAbhaLinked] = useState(false);
   const [devMode, setDevMode] = useState(false);
+  const [activeAlert, setActiveAlert] = useState(null);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -18,6 +19,23 @@ export default function ChatInterface() {
   const analyserRef = useRef(null);
   const dataArrayRef = useRef(null);
   const animationFrameRef = useRef(null);
+
+  // Poll for Active Broadcast Alerts
+  useEffect(() => {
+    const fetchAlert = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/alerts/active');
+        if (res.data.activeBroadcast && res.data.activeBroadcast.region.toLowerCase() === locationText.toLowerCase()) {
+          setActiveAlert(res.data.activeBroadcast);
+        } else {
+          setActiveAlert(null);
+        }
+      } catch(e) {}
+    };
+    fetchAlert();
+    const interval = setInterval(fetchAlert, 5000);
+    return () => clearInterval(interval);
+  }, [locationText]);
 
   // Auto-play audio when new messages arrive
   useEffect(() => {
@@ -45,6 +63,8 @@ export default function ChatInterface() {
           sender: 'bot', 
           text: res.data.ai_response, 
           is_emergency: res.data.is_emergency,
+          is_asha_handoff: res.data.is_asha_handoff,
+          asha_profile: res.data.asha_profile,
           sources: res.data.sources,
           confidence_score: res.data.confidence_score
       }]);
@@ -96,6 +116,8 @@ export default function ChatInterface() {
                 text: res.data.ai_response, 
                 audio: res.data.audio_url,
                 is_emergency: res.data.is_emergency,
+                is_asha_handoff: res.data.is_asha_handoff,
+                asha_profile: res.data.asha_profile,
                 sources: res.data.sources,
                 confidence_score: res.data.confidence_score
             }
@@ -215,6 +237,14 @@ export default function ChatInterface() {
         </div>
       </div>
 
+      {/* Proactive Broadcast Alert Banner */}
+      {activeAlert && (
+        <div className="bg-orange-500 text-white px-4 py-2 text-center text-sm shadow-md flex justify-center items-center gap-2 animate-pulse font-bold tracking-wide">
+          <ShieldAlert className="w-5 h-5" />
+          ⚠️ Alert from local health authorities: {activeAlert.message}
+        </div>
+      )}
+
       {/* Chat Area */}
       <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-gray-50/50">
         {messages.map((msg, idx) => (
@@ -227,6 +257,23 @@ export default function ChatInterface() {
                 <p className="font-bold text-sm tracking-wide">
                   🚨 Critical Situation Detected: Please visit the nearest primary health center immediately.
                 </p>
+              </div>
+            )}
+
+            {/* ASHA Hand-off Banner */}
+            {msg.is_asha_handoff && msg.asha_profile && (
+              <div className="mb-2 max-w-[90%] bg-blue-600 text-white p-3 rounded-lg flex flex-col items-start gap-2 shadow-lg animate-pulse">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <p className="font-bold text-sm tracking-wide">
+                    Connecting with your local ASHA worker...
+                  </p>
+                </div>
+                <div className="bg-blue-700 w-full p-2 rounded text-xs border border-blue-500">
+                  <p><strong>{msg.asha_profile.role}:</strong> {msg.asha_profile.name}</p>
+                  <p><strong>Assigned Code:</strong> {msg.asha_profile.code}</p>
+                  <p className="mt-1 opacity-90 text-[11px]">Your conversation transcript has been securely forwarded for immediate human intervention.</p>
+                </div>
               </div>
             )}
 

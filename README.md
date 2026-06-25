@@ -30,6 +30,19 @@ Judges are inherently skeptical of LLMs handling medical queries due to liabilit
 - **Dev Toggle UI**: A hidden toggle on the frontend reveals a card showing the exact **Cosine Similarity Score** calculated by our local Python NumPy script against the MongoDB Compass database.
 - **The Pitch**: "We don't trust the LLM blindly. If a user asks a question and our MongoDB local vector math yields a similarity score below 0.70, our Master Prompt actively locks down the system and prevents a response. It outputs a strict 'Data Boundary Enforced' refusal instead."
 
+## Epidemic Early-Warning Broadcast (Proactive Analytics)
+To prove SwasthyaMitra is a true public health infrastructure tool rather than a reactive chatbot:
+- **Alert Trigger:** The Admin Analytics Dashboard features a prominent **"Trigger Public Health Alert"** button.
+- **Broadcast Banner:** When an admin detects a live regional disease spike, they can click the button. A high-visibility warning banner instantly appears across the patient chat interfaces in that specific region, alerting them to take preventive measures (e.g., *⚠️ Dengue spike detected in your area*).
+- **The Pitch**: "SwasthyaMitra isn't just an informational assistant; it's a closed-loop epidemic early-warning system. When our database logs a critical cluster of localized symptom queries, health authorities can instantly broadcast targeted preventive measures back to that specific community."
+
+## Automated Triage & "ASHA Worker Hand-off" Routing
+An exit strategy demonstrating that the AI acts as the first line of triage, not a final diagnostic tool.
+- **Triage Detection:** If a user reports prolonged or severe matching symptoms (e.g., *persistent high fever for 5 days*), the Express backend intercepts the interaction and triggers a **Human Escalation Token**.
+- **Hand-off Card:** The AI suspends typical responses and instead drops a specialized info card: `"Connecting with your local ASHA worker..."`, displaying the assigned worker's profile (e.g., *ASHA Partner: Sunita Devi, Assigned Code: #3942*).
+- **Live Dispatch Feed:** The full conversation transcript is securely forwarded to the **"ASHA Worker Mobile Feed"** widget visible on the Admin Dashboard for immediate human intervention.
+- **The Pitch**: "We know AI has boundaries in healthcare. SwasthyaMitra acts as the first line of triage. When symptoms exceed general awareness thresholds, the system flags the interaction and routes the full localized transcript to the village's assigned ASHA worker, ensuring human intervention exactly where it is needed most."
+
 ## How to Run the Project
 
 ### Prerequisites
