@@ -10,6 +10,7 @@ export default function ChatInterface() {
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
   const [abhaId, setAbhaId] = useState("");
   const [abhaLinked, setAbhaLinked] = useState(false);
+  const [devMode, setDevMode] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -44,7 +45,8 @@ export default function ChatInterface() {
           sender: 'bot', 
           text: res.data.ai_response, 
           is_emergency: res.data.is_emergency,
-          sources: res.data.sources
+          sources: res.data.sources,
+          confidence_score: res.data.confidence_score
       }]);
     } catch (err) {
       console.error(err);
@@ -94,7 +96,8 @@ export default function ChatInterface() {
                 text: res.data.ai_response, 
                 audio: res.data.audio_url,
                 is_emergency: res.data.is_emergency,
-                sources: res.data.sources
+                sources: res.data.sources,
+                confidence_score: res.data.confidence_score
             }
           ]);
         } catch (err) {
@@ -187,15 +190,28 @@ export default function ChatInterface() {
             )}
           </div>
 
-          <label className="flex items-center space-x-2 cursor-pointer text-xs font-medium">
-            <span className="opacity-90">Auto-Play Responses</span>
-            <div 
-              className={`relative w-8 h-4 rounded-full transition-colors ${autoPlayEnabled ? 'bg-emerald-400' : 'bg-gray-400'}`}
-              onClick={() => setAutoPlayEnabled(!autoPlayEnabled)}
-            >
-              <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${autoPlayEnabled ? 'translate-x-4' : ''}`}></div>
-            </div>
-          </label>
+          <div className="flex items-center gap-4">
+            {/* Dev Mode Toggle */}
+            <label className="flex items-center space-x-2 cursor-pointer text-xs font-medium" title="Show Hallucination Defense Metric">
+              <span className="opacity-90">Dev Mode</span>
+              <div 
+                className={`relative w-8 h-4 rounded-full transition-colors ${devMode ? 'bg-amber-500' : 'bg-gray-400'}`}
+                onClick={() => setDevMode(!devMode)}
+              >
+                <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${devMode ? 'translate-x-4' : ''}`}></div>
+              </div>
+            </label>
+
+            <label className="flex items-center space-x-2 cursor-pointer text-xs font-medium">
+              <span className="opacity-90">Auto-Play Responses</span>
+              <div 
+                className={`relative w-8 h-4 rounded-full transition-colors ${autoPlayEnabled ? 'bg-emerald-400' : 'bg-gray-400'}`}
+                onClick={() => setAutoPlayEnabled(!autoPlayEnabled)}
+              >
+                <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${autoPlayEnabled ? 'translate-x-4' : ''}`}></div>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -241,6 +257,15 @@ export default function ChatInterface() {
                     ))}
                   </div>
                 </details>
+              )}
+
+              {/* Dev Mode Metric Card (Hallucination Defense) */}
+              {devMode && msg.sender === 'bot' && msg.confidence_score !== undefined && (
+                <div className={`mt-3 p-2 rounded text-xs font-mono font-bold border flex flex-col gap-1 ${msg.confidence_score >= 0.70 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                  <span>[Hallucination Defense]</span>
+                  <span>Cosine Similarity Score: {msg.confidence_score.toFixed(4)}</span>
+                  {msg.confidence_score < 0.70 && <span className="text-red-600">🚨 SYSTEM LOCKED: Boundary Enforced</span>}
+                </div>
               )}
             </div>
           </div>

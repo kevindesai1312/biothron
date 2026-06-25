@@ -135,7 +135,7 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
         console.log(`User Said (Transcribed): ${userQueryText}`);
 
         const emergency = checkEmergency(userQueryText);
-        let finalResponse, sources = [], isEmergency = false;
+        let finalResponse, sources = [], isEmergency = false, confidenceScore = 0;
 
         if (emergency) {
             console.log("Emergency Triggered!");
@@ -160,6 +160,7 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
             const resultObj = await getAIandRAGResponse(userQueryText);
             finalResponse = resultObj.ai_response;
             sources = resultObj.sources || [];
+            confidenceScore = resultObj.confidence_score || 0;
             
             // 2.5 Log Telemetry asynchronously
             logTelemetry(userQueryText, req.body.location || "Unknown");
@@ -191,6 +192,7 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
             user_query: userQueryText,
             ai_response: finalResponse,
             sources: sources,
+            confidence_score: confidenceScore,
             is_emergency: isEmergency,
             audio_url: `http://localhost:${process.env.PORT || 5000}/uploads/${outputFilename}`
         });
@@ -245,6 +247,7 @@ app.post('/api/chat-text', async (req, res) => {
             user_query: userQuery,
             ai_response: resultObj.ai_response,
             sources: resultObj.sources || [],
+            confidence_score: resultObj.confidence_score || 0,
             is_emergency: false
         });
 
@@ -311,13 +314,15 @@ async function getAIandRAGResponse(query) {
         const parsed = JSON.parse(rawJsonStr);
         return {
             ai_response: parsed.response,
-            sources: parsed.sources
+            sources: parsed.sources,
+            confidence_score: parsed.confidence_score
         };
     } catch (err) {
         console.error("Failed to execute python pipeline:", err);
         return {
             ai_response: "मुझे क्षमा करें, अभी हमारे सिस्टम में कुछ तकनीकी समस्या है। कृपया बाद में प्रयास करें। (System Error)",
-            sources: []
+            sources: [],
+            confidence_score: 0
         };
     }
 }
