@@ -10,6 +10,8 @@ const util = require('util');
 const { MongoClient } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { checkLocalFirstAid } = require('./triageEngine');
+const { categorizeAndAnonymize } = require('./anonymizer');
 
 // Promisify exec for async/await usage
 const execPromise = util.promisify(exec);
@@ -97,24 +99,17 @@ function checkAshaHandoff(query) {
 }
 
 // Telemetry Logic
-const diseaseKeywords = ['Malaria', 'Dengue', 'Vaccination', 'TB', 'Fever', 'Diabetes', 'Cholera', 'Typhoid'];
 async function logTelemetry(query, location) {
     if (!db) return;
     try {
-        const lowerQuery = query.toLowerCase();
-        let detectedDisease = 'General Inquiry';
-        for (const disease of diseaseKeywords) {
-            if (lowerQuery.includes(disease.toLowerCase())) {
-                detectedDisease = disease;
-                break;
-            }
-        }
+        const anonymizedData = categorizeAndAnonymize(query);
         await db.collection('regional_trends').insertOne({
-            disease: detectedDisease,
+            disease: anonymizedData.category,
+            safeQuery: anonymizedData.safeQuery,
             location: location || "Unknown",
-            timestamp: new Date()
+            timestamp: anonymizedData.timestamp
         });
-        console.log(`Telemetry logged: ${detectedDisease} in ${location}`);
+        console.log(`Telemetry logged: ${anonymizedData.category} in ${location} (Query Sanitized)`);
     } catch (err) {
         console.error("Telemetry error:", err);
     }
@@ -146,6 +141,10 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
         const result = await model.generateContent([prompt, audioPart]);
         
         let userQueryText = result.response.text().trim();
+
+        if (req.body.selectedLanguage) {
+            userQueryText = `[Please respond strictly in ${req.body.selectedLanguage}] ` + userQueryText;
+        }
 
         if (req.body.abhaLinked === 'true') {
             userQueryText = `[USER PROFILE: ABHA Card Linked. Name: Pratham.] ` + userQueryText;
@@ -229,6 +228,7 @@ app.post('/api/chat-voice', upload.single('audio'), async (req, res) => {
         res.json({
             user_query: userQueryText,
             ai_response: finalResponse,
+            ui_state: resultObj ? resultObj.ui_state : undefined,
             sources: sources,
             confidence_score: confidenceScore,
             is_emergency: isEmergency,
@@ -254,6 +254,21 @@ app.post('/api/chat-text', async (req, res) => {
         if (abhaLinked) {
             userQuery = `[USER PROFILE: ABHA Card Linked. Name: Pratham.] ` + userQuery;
         }
+
+        // --- DYNAMIC RULE-BASED FIRST-AID SCREENING ENGINE ---
+        const firstAidMatch = checkLocalFirstAid(userQuery);
+        if (firstAidMatch.matched) {
+            console.log("Local First-Aid Rule Matched. Bypassing AI.");
+            return res.json({
+                user_query: userQuery,
+                ai_response: firstAidMatch.instructions,
+                is_emergency: false,
+                is_asha_handoff: false,
+                sources: ["Local Triage Engine"],
+                confidence_score: 1.0
+            });
+        }
+        // -----------------------------------------------------
 
         const emergency = checkEmergency(userQuery);
         const ashaHandoff = checkAshaHandoff(userQuery);
@@ -306,6 +321,7 @@ app.post('/api/chat-text', async (req, res) => {
         res.json({
             user_query: userQuery,
             ai_response: resultObj.ai_response,
+            ui_state: resultObj.ui_state,
             sources: resultObj.sources || [],
             confidence_score: resultObj.confidence_score || 0,
             is_emergency: false,
@@ -354,6 +370,26 @@ app.post('/api/ussd', async (req, res) => {
 });
 
 // Connect to the Python RAG Pipeline
+const systemErrorMessages = {
+    "English": "I apologize, our system is currently experiencing technical issues. Please try again later. (System Error)",
+    "Hindi": "मुझे क्षमा करें, अभी हमारे सिस्टम में कुछ तकनीकी समस्या है। कृपया बाद में प्रयास करें। (System Error)",
+    "Bengali": "আমি দুঃখিত, আমাদের সিস্টেমে বর্তমানে কিছু প্রযুক্তিগত সমস্যা হচ্ছে। অনুগ্রহ করে পরে আবার চেষ্টা করুন। (System Error)",
+    "Telugu": "నన్ను క్షమించండి, ప్రస్తుతం మా సిస్టమ్‌లో కొన్ని సాంకేతిక సమస్యలు ఉన్నాయి. దయచేసి తర్వాత మళ్లీ ప్రయత్నించండి. (System Error)",
+    "Tamil": "மன்னிக்கவும், எங்கள் அமைப்பில் தற்போது சில தொழில்நுட்ப சிக்கல்கள் உள்ளன. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும். (System Error)",
+    "Marathi": "मला क्षमा करा, सध्या आमच्या सिस्टममध्ये काही तांत्रिक समस्या आहेत. कृपया नंतर पुन्हा प्रयत्न करा. (System Error)",
+    "Gujarati": "હું માફી માંગુ છું, હાલમાં અમારી સિસ્ટમમાં કેટલીક તકનીકી સમસ્યાઓ છે. કૃપા કરીને થોડા સમય પછી ફરી પ્રયાસ કરો. (System Error)"
+};
+
+function getSystemErrorFallback(query) {
+    if (!query) return systemErrorMessages["English"];
+    for (const [lang, msg] of Object.entries(systemErrorMessages)) {
+        if (query.includes(lang)) {
+            return msg;
+        }
+    }
+    return systemErrorMessages["English"];
+}
+
 async function getAIandRAGResponse(query) {
     try {
         // Run the python script with the query as an argument.
@@ -375,13 +411,14 @@ async function getAIandRAGResponse(query) {
         const parsed = JSON.parse(rawJsonStr);
         return {
             ai_response: parsed.response,
+            ui_state: parsed.ui_state,
             sources: parsed.sources,
             confidence_score: parsed.confidence_score
         };
     } catch (err) {
         console.error("Failed to execute python pipeline:", err);
         return {
-            ai_response: "मुझे क्षमा करें, अभी हमारे सिस्टम में कुछ तकनीकी समस्या है। कृपया बाद में प्रयास करें। (System Error)",
+            ai_response: getSystemErrorFallback(query),
             sources: [],
             confidence_score: 0
         };

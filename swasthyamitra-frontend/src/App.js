@@ -3,6 +3,8 @@ import ChatInterface from './components/ChatInterface';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import AdminLogin from './components/AdminLogin';
 import USSDSimulator from './components/USSDSimulator';
+import HealthSchemes from './components/HealthSchemes';
+import Hospitals from './components/Hospitals';
 import { LogOut } from 'lucide-react';
 
 function App() {
@@ -41,6 +43,16 @@ function App() {
           Patient Mobile Interface
         </button>
         <button 
+          onClick={() => setView('schemes')} 
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'schemes' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
+          Health Schemes
+        </button>
+        <button 
+          onClick={() => setView('hospitals')} 
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'hospitals' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
+          Hospitals & Emergencies
+        </button>
+        <button 
           onClick={() => setView('ussd')} 
           className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'ussd' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
           Offline USSD Simulator
@@ -54,6 +66,8 @@ function App() {
 
       <div>
         {view === 'chat' && <ChatInterface />}
+        {view === 'schemes' && <HealthSchemes />}
+        {view === 'hospitals' && <Hospitals />}
         {view === 'ussd' && <USSDSimulator />}
         {view === 'analytics' && !token && <AdminLogin onLoginSuccess={setToken} />}
         {view === 'analytics' && token && <AnalyticsDashboard token={token} onLogout={handleLogout} />}
