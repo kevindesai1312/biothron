@@ -5,6 +5,8 @@ import AdminLogin from './components/AdminLogin';
 import USSDSimulator from './components/USSDSimulator';
 import HealthSchemes from './components/HealthSchemes';
 import Hospitals from './components/Hospitals';
+import Layout from './components/Layout';
+import Settings from './components/Settings';
 import { LogOut } from 'lucide-react';
 
 function App() {
@@ -25,54 +27,29 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-100 p-6 space-y-6 relative">
-      
+    <>
       {token && (
         <button 
           onClick={handleLogout}
-          className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm text-red-600 font-medium text-sm hover:bg-red-50 border border-red-100 transition-all z-20"
+          className="absolute top-8 right-12 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm text-red-600 font-medium text-sm hover:bg-red-50 border border-red-100 transition-all z-50"
         >
           <LogOut className="w-4 h-4" /> Logout
         </button>
       )}
 
-      <div className="flex justify-center gap-4 flex-wrap">
-        <button 
-          onClick={() => setView('chat')} 
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'chat' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
-          Patient Mobile Interface
-        </button>
-        <button 
-          onClick={() => setView('schemes')} 
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'schemes' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
-          Health Schemes
-        </button>
-        <button 
-          onClick={() => setView('hospitals')} 
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'hospitals' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
-          Hospitals & Emergencies
-        </button>
-        <button 
-          onClick={() => setView('ussd')} 
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'ussd' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
-          Offline USSD Simulator
-        </button>
-        <button 
-          onClick={() => setView('analytics')} 
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm ${view === 'analytics' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}>
-          Admin Analytics Dashboard
-        </button>
-      </div>
-
-      <div>
-        {view === 'chat' && <ChatInterface />}
-        {view === 'schemes' && <HealthSchemes />}
-        {view === 'hospitals' && <Hospitals />}
-        {view === 'ussd' && <USSDSimulator />}
-        {view === 'analytics' && !token && <AdminLogin onLoginSuccess={setToken} />}
-        {view === 'analytics' && token && <AnalyticsDashboard token={token} onLogout={handleLogout} />}
-      </div>
-    </div>
+      <Layout currentView={view} onViewChange={setView} isAdmin={!!token}>
+        <div className="h-full flex flex-col">
+          {view === 'chat' && <ChatInterface />}
+          {view === 'schemes' && <HealthSchemes />}
+          {view === 'hospitals' && <Hospitals />}
+          {view === 'ussd' && <USSDSimulator />}
+          {view === 'settings' && !token && <AdminLogin onLoginSuccess={setToken} />}
+          {view === 'settings' && token && <Settings />}
+          {view === 'analytics' && !token && <AdminLogin onLoginSuccess={setToken} />}
+          {view === 'analytics' && token && <AnalyticsDashboard token={token} onLogout={handleLogout} />}
+        </div>
+      </Layout>
+    </>
   );
 }
 

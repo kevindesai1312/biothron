@@ -1,18 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Mic, Send, MapPin, Volume2, ShieldAlert, BookOpen, ChevronDown, Globe, Share2 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+
 import { handleOfflineSearch } from '../OfflineCache';
 
-// Fix for default marker icons in react-leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
+
 
 
 export default function ChatInterface() {
@@ -27,9 +19,7 @@ export default function ChatInterface() {
   const [lowDataMode, setLowDataMode] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState("English (English)");
-  const [activeTab, setActiveTab] = useState("Chat");
   const [isSlowModeActive, setIsSlowModeActive] = useState(false);
-  const [mapCenter, setMapCenter] = useState(null);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -60,19 +50,9 @@ export default function ChatInterface() {
     return () => clearInterval(interval);
   }, [locationText]);
 
-  useEffect(() => {
-    if (activeTab === "Hospitals") {
-      axios.get(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationText)}&format=json&limit=1`)
-        .then(res => {
-          if (res.data && res.data.length > 0) {
-            setMapCenter([parseFloat(res.data[0].lat), parseFloat(res.data[0].lon)]);
-          }
-        })
-        .catch(err => console.error(err));
-    }
-  }, [activeTab, locationText]);
 
-  const playAudioMsg = (msg) => {
+
+  const playAudioMsg = useCallback((msg) => {
     if (isSlowModeActive || !msg.audio) {
       if (msg.text) {
         const utterance = new SpeechSynthesisUtterance(msg.text);
@@ -83,7 +63,7 @@ export default function ChatInterface() {
     } else if (msg.audio) {
       new Audio(msg.audio).play().catch(e => console.log("Audio playback blocked", e));
     }
-  };
+  }, [isSlowModeActive, selectedLanguage]);
 
   // Auto-play audio when new messages arrive
   useEffect(() => {
@@ -93,7 +73,7 @@ export default function ChatInterface() {
         playAudioMsg(lastMsg);
       }
     }
-  }, [messages, autoPlayEnabled, isSlowModeActive]);
+  }, [messages, autoPlayEnabled, playAudioMsg]);
 
   const sendMessage = async (text) => {
     if (!text.trim()) return;
@@ -125,9 +105,7 @@ export default function ChatInterface() {
         lowDataMode
       });
       const uiState = res.data.ui_state;
-      if (uiState && uiState.active_tab_fallback) {
-        setActiveTab(uiState.active_tab_fallback);
-      }
+
       setMessages(prev => [...prev, { 
           sender: 'bot', 
           text: res.data.ai_response, 
@@ -183,9 +161,7 @@ export default function ChatInterface() {
         try {
           const res = await axios.post('http://localhost:5000/api/chat-voice', formData);
           const uiState = res.data.ui_state;
-          if (uiState && uiState.active_tab_fallback) {
-            setActiveTab(uiState.active_tab_fallback);
-          }
+
           setMessages(prev => [
             ...prev, 
             { sender: 'user', text: `🎤 Voice: "${res.data.user_query}"` },
@@ -246,7 +222,7 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className={`flex flex-col h-[600px] w-full max-w-2xl mx-auto overflow-hidden ${lowDataMode ? 'bg-white border-4 border-black' : 'bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50'}`}>
+    <div className={`flex flex-col h-full w-full overflow-hidden ${lowDataMode ? 'bg-white border-4 border-black' : 'bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50'}`}>
       {/* Header */}
       <div className={`${lowDataMode ? 'bg-black text-white p-2 border-b-4 border-black' : 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-5 shadow-md'} flex flex-col z-10 space-y-3`}>
         <div className="flex justify-between items-center">
@@ -352,12 +328,7 @@ export default function ChatInterface() {
             </label>
           </div>
         </div>
-        {/* Dynamic Tabs */}
-        <div className="flex gap-4 border-t border-emerald-500/30 pt-2 mt-2 overflow-x-auto text-sm font-semibold">
-          {["Chat", "Symptoms", "Disease Info", "Schemes"].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`${activeTab === tab ? 'text-white border-b-2 border-white' : 'text-emerald-100/70 hover:text-white'} pb-1 px-1 whitespace-nowrap transition-colors`}>{tab}</button>
-          ))}
-        </div>
+
       </div>
 
       {/* Proactive Broadcast Alert Banner */}
@@ -368,36 +339,7 @@ export default function ChatInterface() {
         </div>
       )}
 
-      {/* Dynamic Tab Area */}
-      {activeTab === "Hospitals" ? (
-        <div className="flex-1 p-0 flex flex-col bg-gray-50/50 relative overflow-hidden" style={{ zIndex: 0 }}>
-          {mapCenter ? (
-            <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%" }} className="z-0">
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Marker position={mapCenter}>
-                <Popup>
-                  Estimated center of {locationText}. <br />
-                  (Nearby clinics highlighted)
-                </Popup>
-              </Marker>
-            </MapContainer>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-5">
-              <MapPin className="w-16 h-16 text-emerald-500 mb-4 animate-bounce" />
-              <h3 className="text-xl font-bold text-gray-700">Nearby Hospitals Map View</h3>
-              <p className="text-sm text-gray-500 mt-2">OpenStreetMap integration loading for {locationText}...</p>
-            </div>
-          )}
-        </div>
-      ) : activeTab !== "Chat" ? (
-        <div className="flex-1 p-5 flex flex-col items-center justify-center bg-gray-50/50">
-          <h3 className="text-xl font-bold text-gray-700">{activeTab} View</h3>
-          <p className="text-sm text-gray-500 mt-2">Content for {activeTab} will appear here.</p>
-        </div>
-      ) : (
+
         <div className={`flex-1 p-5 overflow-y-auto space-y-4 ${lowDataMode ? 'bg-white' : 'bg-gray-50/50'}`}>
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} ${lowDataMode ? '' : 'animate-fade-in-up'}`}>
@@ -496,7 +438,6 @@ export default function ChatInterface() {
           </div>
         ))}
         </div>
-      )}
 
       {/* Input Action Panel */}
       <div className={`${lowDataMode ? 'p-2 bg-white border-t-4 border-black' : 'p-4 bg-white/80 backdrop-blur-md border-t'} flex items-center gap-3`}>
