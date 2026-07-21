@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(__file__), 'swasthyamitra-backend', '.env')
 load_dotenv(dotenv_path=env_path)
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://kevinkdesai1308_db_user:Yh2joDtSbsNacDQu@cluster0.zahkpwz.mongodb.net/smartipm?retryWrites=true&w=majority")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 print("Connecting to MongoDB...")
@@ -52,6 +52,22 @@ sample_data = [
     {
         "text": "बच्चों के लिए टीकाकरण (Vaccination) बहुत महत्वपूर्ण है। पोलियो, बीसीजी (BCG), और पेंटावैलेंट टीके बच्चों को गंभीर बीमारियों से बचाते हैं। अपने नजदीकी स्वास्थ्य केंद्र से संपर्क करें।",
         "metadata": {"topic": "Vaccination Schedules", "language": "hi"}
+    },
+    {
+        "text": "The Janani Suraksha Yojana (JSY) is a safe motherhood intervention under the National Health Mission. It aims to reduce maternal and neonatal mortality by promoting institutional delivery among poor pregnant women. Under this scheme, pregnant women receive cash assistance.",
+        "metadata": {"topic": "Government Health Schemes", "language": "en"}
+    },
+    {
+        "text": "The Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA) provides comprehensive, quality, and free antenatal care to pregnant women on the 9th of every month. It aims to ensure that every pregnant woman receives at least one checkup in the 2nd or 3rd trimester by a physician/specialist.",
+        "metadata": {"topic": "Government Health Schemes", "language": "en"}
+    },
+    {
+        "text": "Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (AB-PMJAY) provides a health cover of Rs. 5 lakhs per family per year for secondary and tertiary care hospitalization. This includes maternity care for pregnant women and treatment for severe illnesses.",
+        "metadata": {"topic": "Government Health Schemes", "language": "en"}
+    },
+    {
+        "text": "गर्भवती महिलाओं के लिए प्रधानमंत्री मातृ वंदना योजना (PMMVY) के तहत 5000 रुपये की नकद सहायता दी जाती है, ताकि वे अपने स्वास्थ्य और पोषण का ध्यान रख सकें।",
+        "metadata": {"topic": "Government Health Schemes", "language": "hi"}
     }
 ]
 

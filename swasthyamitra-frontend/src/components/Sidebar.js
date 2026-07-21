@@ -1,13 +1,13 @@
 import React from 'react';
-import { Home, UserCircle2, Activity, BarChart3, Settings } from 'lucide-react';
+import { Home, UserCircle2, Activity, BarChart3, Phone } from 'lucide-react';
 
 const Sidebar = ({ currentView, onViewChange, isAdmin }) => {
   const navItems = [
     { id: 'chat', label: 'Patient Hub', icon: Home },
+    { id: 'ussd', label: 'USSD Offline', icon: Phone },
     { id: 'schemes', label: 'Health Programs', icon: Activity },
     { id: 'hospitals', label: 'Hospitals', icon: UserCircle2 },
-    { id: 'analytics', label: 'Admin Insights', icon: BarChart3 },
-    { id: 'ussd', label: 'USSD Channel', icon: Settings }, // Using settings icon for this secondary channel or change it
+    { id: 'profile', label: 'My Profile', icon: UserCircle2 },
   ];
 
   return (
@@ -51,19 +51,19 @@ const Sidebar = ({ currentView, onViewChange, isAdmin }) => {
       </nav>
       
       {isAdmin && (
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col gap-4">
           <button 
-            onClick={() => onViewChange('settings')}
+            onClick={() => onViewChange('analytics')}
             className={`flex flex-col items-center justify-center w-20 py-3 rounded-2xl transition-all duration-300 group
-              ${currentView === 'settings'
+              ${currentView === 'analytics'
                 ? 'bg-gradient-to-b from-teal-50 to-emerald-100 shadow-inner' 
                 : 'hover:bg-teal-50/50'
               }`}
           >
-             <div className={`p-2 rounded-xl transition-all duration-300 ${currentView === 'settings' ? 'bg-white shadow-sm' : 'group-hover:scale-110'}`}>
-                <Settings className={`w-6 h-6 ${currentView === 'settings' ? 'text-teal-600' : 'text-slate-400'}`} strokeWidth={currentView === 'settings' ? 2.5 : 1.5} />
+             <div className={`p-2 rounded-xl transition-all duration-300 ${currentView === 'analytics' ? 'bg-white shadow-sm' : 'group-hover:scale-110'}`}>
+                <BarChart3 className={`w-6 h-6 ${currentView === 'analytics' ? 'text-teal-600' : 'text-slate-400'}`} />
              </div>
-             <span className={`text-[10px] mt-2 font-medium ${currentView === 'settings' ? 'text-teal-700' : 'text-slate-400'}`}>Settings</span>
+             <span className={`text-[10px] mt-2 font-medium text-center leading-tight ${currentView === 'analytics' ? 'text-teal-700' : 'text-slate-400'}`}>Admin Insights</span>
           </button>
         </div>
       )}

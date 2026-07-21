@@ -116,7 +116,7 @@ In rural digital medicine, older generations or people under immense stress stru
    ```env
    GEMINI_API_KEY=your_gemini_key
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017
+   MONGO_URI=mongodb+srv://kevinkdesai1308_db_user:Yh2joDtSbsNacDQu@cluster0.zahkpwz.mongodb.net/smartipm?retryWrites=true&w=majority
    ```
 4. Run the data ingestion script to populate MongoDB with the medical knowledge base:
    ```bash

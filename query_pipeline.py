@@ -12,7 +12,7 @@ env_path = os.path.join(os.path.dirname(__file__), 'swasthyamitra-backend', '.en
 load_dotenv(dotenv_path=env_path)
 
 # 1. Configuration & Initializations
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://kevinkdesai1308_db_user:Yh2joDtSbsNacDQu@cluster0.zahkpwz.mongodb.net/smartipm?retryWrites=true&w=majority")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = MongoClient(MONGO_URI)
 db = client["SwasthyaMitra"]

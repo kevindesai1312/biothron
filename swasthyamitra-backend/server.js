@@ -22,7 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB natively in Node.js
-const mongoClient = new MongoClient(process.env.MONGO_URI || "mongodb://localhost:27017");
+const mongoClient = new MongoClient(process.env.MONGO_URI || "mongodb+srv://kevinkdesai1308_db_user:Yh2joDtSbsNacDQu@cluster0.zahkpwz.mongodb.net/smartipm?retryWrites=true&w=majority");
 let db;
 mongoClient.connect().then(async () => {
     db = mongoClient.db("SwasthyaMitra");
@@ -30,12 +30,13 @@ mongoClient.connect().then(async () => {
 
     // Seed Admin Securely
     const adminCollection = db.collection('admins');
-    const existingAdmin = await adminCollection.findOne({ email: 'admin@gmail.com' });
-    if (!existingAdmin) {
-        const hashedPassword = await bcrypt.hash('admin123', 10);
-        await adminCollection.insertOne({ email: 'admin@gmail.com', password: hashedPassword });
-        console.log("Default secure admin seeded.");
-    }
+    const hashedPassword = await bcrypt.hash('admin@123', 10);
+    await adminCollection.updateOne(
+        { email: 'admin@gmail.com' },
+        { $set: { password: hashedPassword } },
+        { upsert: true }
+    );
+    console.log("Default secure admin seeded.");
 }).catch(err => console.error("MongoDB connection error:", err));
 
 app.use(cors());
@@ -78,6 +79,229 @@ function checkEmergency(query) {
     }
     return null;
 }
+
+// --- USER AUTHENTICATION ENDPOINTS ---
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+        if (!db) return res.status(503).json({ error: "Database not ready" });
+
+        const existingUser = await db.collection('users').findOne({ email });
+        if (existingUser) return res.status(400).json({ error: "User already exists" });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.collection('users').insertOne({ 
+            name, email, password: hashedPassword, role: 'patient', createdAt: new Date() 
+        });
+
+        res.status(201).json({ success: true, message: "User registered successfully" });
+    } catch (err) {
+        console.error("Register Error:", err);
+        res.status(500).json({ error: "Server error during registration" });
+    }
+});
+
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!db) return res.status(503).json({ error: "Database not ready" });
+
+        const admin = await db.collection('admins').findOne({ email });
+        if (!admin) return res.status(401).json({ error: "Invalid admin credentials" });
+
+        const validPassword = await bcrypt.compare(password, admin.password);
+        if (!validPassword) return res.status(401).json({ error: "Invalid admin credentials" });
+
+        const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+        return res.json({ token, user: { role: 'admin' } });
+    } catch (err) {
+        console.error("Admin Login Error:", err);
+        res.status(500).json({ error: "Server error during admin login" });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!db) return res.status(503).json({ error: "Database not ready" });
+
+        let user = await db.collection('users').findOne({ email });
+        let role = user ? (user.role || 'patient') : null;
+
+        if (!user) {
+            user = await db.collection('admins').findOne({ email });
+            role = 'admin';
+        }
+
+        if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) return res.status(401).json({ error: "Invalid credentials" });
+
+        const token = jwt.sign({ userId: user._id, email: user.email, role: role, name: user.name || 'Admin' }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ token, user: { name: user.name || 'Admin', email: user.email, role: role } });
+    } catch (err) {
+        console.error("Login Error:", err);
+        res.status(500).json({ error: "Server error during login" });
+    }
+});
+
+app.get('/api/user/profile', authenticateToken, async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: "Database not connected" });
+        let user = await db.collection('users').findOne({ email: req.user.email }, { projection: { password: 0 } });
+        if (!user) {
+            user = await db.collection('admins').findOne({ email: req.user.email }, { projection: { password: 0 } });
+        }
+        if (!user) return res.status(404).json({ error: "User not found" });
+        res.json({ profile: user });
+    } catch (err) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+app.put('/api/user/profile', authenticateToken, async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: "Database not connected" });
+        const { name, dob, gender, bloodGroup, phone, chronicConditions, allergies, medications, emergencyContactName, emergencyContactPhone, language, location } = req.body;
+        
+        // Remove undefined fields
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (dob !== undefined) updateData.dob = dob;
+        if (gender !== undefined) updateData.gender = gender;
+        if (bloodGroup !== undefined) updateData.bloodGroup = bloodGroup;
+        if (phone !== undefined) updateData.phone = phone;
+        if (chronicConditions !== undefined) updateData.chronicConditions = chronicConditions;
+        if (allergies !== undefined) updateData.allergies = allergies;
+        if (medications !== undefined) updateData.medications = medications;
+        if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;
+        if (emergencyContactPhone !== undefined) updateData.emergencyContactPhone = emergencyContactPhone;
+        if (language !== undefined) updateData.language = language;
+        if (location !== undefined) updateData.location = location;
+
+        let result = await db.collection('users').updateOne(
+            { email: req.user.email },
+            { $set: updateData }
+        );
+        
+        if (result.matchedCount === 0) {
+            result = await db.collection('admins').updateOne(
+                { email: req.user.email },
+                { $set: updateData }
+            );
+        }
+        
+        if (result.matchedCount === 0) return res.status(404).json({ error: "User not found" });
+        
+        res.json({ success: true, message: "Profile updated successfully" });
+    } catch (err) {
+        console.error("Profile Update Error:", err);
+        res.status(500).json({ error: "Server error during profile update" });
+    }
+});
+
+app.get('/api/user/notifications', authenticateToken, async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: "Database not connected" });
+        let user = await db.collection('users').findOne({ email: req.user.email }, { projection: { notifications: 1 } });
+        if (!user) user = await db.collection('admins').findOne({ email: req.user.email }, { projection: { notifications: 1 } });
+        
+        if (!user) return res.status(404).json({ error: "User not found" });
+        
+        // Seed default notification if none exist
+        if (!user.notifications || user.notifications.length === 0) {
+            const welcomeNotif = {
+                id: Date.now().toString(),
+                text: "Welcome to SwasthyaMitra! Complete your profile to get personalized health schemes.",
+                read: false,
+                date: new Date().toISOString()
+            };
+            await db.collection('users').updateOne({ email: req.user.email }, { $set: { notifications: [welcomeNotif] } });
+            await db.collection('admins').updateOne({ email: req.user.email }, { $set: { notifications: [welcomeNotif] } });
+            return res.json({ notifications: [welcomeNotif] });
+        }
+        
+        res.json({ notifications: user.notifications });
+    } catch (err) {
+        console.error("Notifications Fetch Error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+app.put('/api/user/notifications/read', authenticateToken, async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: "Database not connected" });
+        
+        // Mark all as read
+        await db.collection('users').updateOne(
+            { email: req.user.email },
+            { $set: { "notifications.$[].read": true } }
+        );
+        await db.collection('admins').updateOne(
+            { email: req.user.email },
+            { $set: { "notifications.$[].read": true } }
+        );
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Notifications Read Error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// --- HOSPITALS & SCHEMES ENDPOINTS ---
+app.get('/api/hospitals', async (req, res) => {
+    try {
+        const location = req.query.location || "Surat, Gujarat";
+        const facilities = await findNearbyHospitals(location);
+        res.json({ hospitals: facilities });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch hospitals" });
+    }
+});
+
+app.get('/api/schemes', async (req, res) => {
+    const schemes = [
+      { title: "Ayushman Bharat", description: "Free health insurance coverage up to ₹5 lakh per family per year for secondary and tertiary care hospitalization.", type: "Central Government", category: "Health Insurance", popular: true, url: "https://pmjay.gov.in/" },
+      { title: "Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA)", description: "Free check-ups on the 9th of every month for pregnant women by specialist doctors.", type: "Central Government", category: "Maternal Health", popular: false, url: "https://pmsma.mohfw.gov.in/" },
+      { title: "Janani Suraksha Yojana", description: "Financial assistance for pregnant women and safe delivery in government institutions.", type: "Central Government", category: "Maternal Health", popular: false, url: "https://nhm.gov.in/" },
+      { title: "PM-JAY (Ayushman Bharat)", description: "World's largest health assurance scheme for vulnerable families.", type: "Central Government", category: "Health Insurance", popular: false, url: "https://pmjay.gov.in/" },
+      { title: "National Health Mission (NHM)", description: "Improving health infrastructure and providing universal access to quality healthcare.", type: "State Government", category: "Public Health", popular: false, url: "https://nhm.gov.in/" }
+    ];
+    res.json({ schemes });
+});
+
+// --- USSD ENDPOINT ---
+app.post('/api/ussd', async (req, res) => {
+    try {
+        const { text, phoneNumber } = req.body;
+        if (!text) return res.status(400).send("No query provided.");
+        
+        console.log(`USSD Request from ${phoneNumber}: ${text}`);
+        
+        // Check for emergency or basic routing first
+        const emergency = checkEmergency(text);
+        if (emergency) {
+            return res.send("🚨 EMERGENCY: Visit nearest primary health center immediately.");
+        }
+        
+        // Use RAG with prompt restriction
+        const ussdQuery = `[System: You are responding to a USSD SMS interface. Limit your response to 150 characters MAXIMUM. Be extremely concise.] ${text}`;
+        
+        const resultObj = await getAIandRAGResponse(ussdQuery);
+        let finalResponse = resultObj.ai_response || "System Error. Try again.";
+        
+        if (finalResponse.length > 155) {
+            finalResponse = finalResponse.substring(0, 150) + "...";
+        }
+        
+        res.send(finalResponse);
+    } catch (err) {
+        console.error("USSD Error:", err);
+        res.status(500).send("Network Error. Try again.");
+    }
+});
 
 // --- PROACTIVE ANALYTICS & ASHA HAND-OFF STATE ---
 let activeBroadcast = null;
@@ -493,7 +717,41 @@ app.get('/api/analytics', authenticateToken, async (req, res) => {
 
         res.json({
             trendingIssuesData: formattedTrends.length > 0 ? formattedTrends : [{ name: 'No Data Yet', count: 0 }],
-            regionalConcernsData: formattedRegions.length > 0 ? formattedRegions : [{ name: 'No Data Yet', value: 0 }]
+            regionalConcernsData: formattedRegions.length > 0 ? formattedRegions : [{ name: 'No Data Yet', value: 0 }],
+            // Admin Panel Mockup Data
+            stats: {
+                totalUsers: "1,24,850",
+                registeredHospitals: "1,256",
+                appointments: "18,742",
+                emergencyRequests: "1,089",
+                activeSchemes: "32"
+            },
+            roleDistribution: [
+                { name: 'Patients', value: 87452 },
+                { name: 'Doctors', value: 18590 },
+                { name: 'Hospitals', value: 9856 },
+                { name: 'Admin Staff', value: 5732 },
+                { name: 'Others', value: 3220 }
+            ],
+            recentAppointments: [
+                { id: 1, user: 'Ramesh Patel', type: 'Consultation', doctor: 'Dr. Meera Shah', date: '24 May 2024, 11:30 AM', status: 'Confirmed' },
+                { id: 2, user: 'Priya Parmar', type: 'Follow-up', doctor: 'Sunshine Hospital', date: '24 May 2024, 02:00 PM', status: 'Confirmed' },
+                { id: 3, user: 'Amit Singh', type: 'Consultation', doctor: 'Dr. Viral Mehta', date: '24 May 2024, 03:30 PM', status: 'Pending' },
+                { id: 4, user: 'Neha Joshi', type: 'Checkup', doctor: 'City Care Hospital', date: '24 May 2024, 04:15 PM', status: 'Completed' },
+                { id: 5, user: 'Dilip Kumar', type: 'Consultation', doctor: 'Dr. Meera Shah', date: '24 May 2024, 05:00 PM', status: 'Confirmed' }
+            ],
+            topHospitals: [
+                { name: 'Sunshine Global Hospital', location: 'Surat, Gujarat', appointments: 2450 },
+                { name: 'New Civil Hospital', location: 'Surat, Gujarat', appointments: 1987 },
+                { name: 'Kiran Multi Super Specialty', location: 'Surat, Gujarat', appointments: 1654 },
+                { name: 'Athwa Lines General Hospital', location: 'Surat, Gujarat', appointments: 1238 },
+                { name: 'Shalby Multi-Specialty Hospital', location: 'Surat, Gujarat', appointments: 1102 }
+            ],
+            systemAlerts: [
+                { type: 'error', message: 'High server load detected', time: 'Today, 10:30 AM' },
+                { type: 'warning', message: '2 hospitals pending verification', time: 'Today, 09:15 AM' },
+                { type: 'info', message: 'Database backup completed', time: 'Yesterday, 11:45 PM' }
+            ]
         });
     } catch (err) {
         console.error("Analytics error:", err);
