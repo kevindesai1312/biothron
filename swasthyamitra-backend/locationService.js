@@ -37,7 +37,10 @@ async function findNearbyHospitals(userLocationText) {
         `;
 
         const overpassRes = await axios.post(overpassUrl, overpassQuery, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'SwasthyaMitraHealthcareBot/1.0'
+            }
         });
 
         if (!overpassRes.data.elements || overpassRes.data.elements.length === 0) {

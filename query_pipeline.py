@@ -39,10 +39,8 @@ llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash", 
     google_api_key=GEMINI_API_KEY, 
     temperature=0.2,
-    model_kwargs={
-        "response_mime_type": "application/json",
-        "response_schema": response_schema
-    }
+    response_mime_type="application/json",
+    response_schema=response_schema
 )
 
 # 2. Local Semantic Search Function for MongoDB Compass Data

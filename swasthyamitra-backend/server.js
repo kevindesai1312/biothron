@@ -30,7 +30,7 @@ mongoClient.connect().then(async () => {
 
     // Seed Admin Securely
     const adminCollection = db.collection('admins');
-    const hashedPassword = await bcrypt.hash('admin@123', 10);
+    const hashedPassword = await bcrypt.hash('admin123', 10);
     await adminCollection.updateOne(
         { email: 'admin@gmail.com' },
         { $set: { password: hashedPassword } },
